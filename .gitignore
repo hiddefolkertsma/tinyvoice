@@ -4,3 +4,4 @@ models/
 wandb
 data/*.pt
 data/*.raw
+.DS_Store

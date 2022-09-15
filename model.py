@@ -96,7 +96,7 @@ class Rec(nn.Module):
     #x,zz = self.gru(x)[0], y
     x,zz = self.conformer(x, y)
     x = self.decode(x).reshape(x.shape[0], x.shape[1]*self.expand, len(CHARSET))
-    zz *= 4
+    # zz *= 4
     return torch.nn.functional.log_softmax(x, dim=2).permute(1,0,2), zz
 
 

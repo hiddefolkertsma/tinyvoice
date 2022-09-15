@@ -46,7 +46,7 @@ def proc(xy):
 
 def get_librespeech(dirr):
   dispatch = []
-  DATASET = "/raid/ljspeech/LibriSpeech"
+  DATASET = "/Users/hidde/Downloads/LibriSpeech"
   for d in tqdm(os.listdir(os.path.join(DATASET, dirr,))):
     for dl in os.listdir(os.path.join(DATASET, dirr, d)):
       meta = os.path.join(DATASET, dirr, d, dl, f"{d}-{dl}.trans.txt")
@@ -69,7 +69,7 @@ def get_ljspeech():
       ret.append((os.path.join(DATASET, 'wavs', row[0]+".wav"), row[1]))
   return ret
 
-def get_cv(f):
+def get_cv(f): # CommonVoice
   DATASET = "/raid/ljspeech/cv-corpus-9.0-2022-04-27/en"
   ret = []
   with open(f"{DATASET}/{f}.tsv", newline='') as csvfile:
@@ -95,18 +95,18 @@ def extract(dispatch):
 
 if __name__ == "__main__":
   dispatch = []
-  dispatch += get_librespeech("train-clean-100")
+  dispatch += get_librespeech("dev-clean")
   print(f"got {len(dispatch)}")
-  dispatch += get_librespeech("train-clean-360")
+  dispatch += get_librespeech("dev-other")
   print(f"got {len(dispatch)}")
   #dispatch += get_librespeech("test-clean")
   #print(f"got {len(dispatch)}")
-  dispatch += get_ljspeech()
-  print(f"got {len(dispatch)}")
-  cv = get_cv("train")
-  random.shuffle(cv)
-  dispatch += cv[0:100000]
-  print(f"got {len(dispatch)}")
+  # dispatch += get_ljspeech()
+  # print(f"got {len(dispatch)}")
+  # cv = get_cv("train")
+  # random.shuffle(cv)
+  # dispatch += cv[0:100000]
+  # print(f"got {len(dispatch)}")
 
   random.seed(1337)
   random.shuffle(dispatch)
@@ -114,9 +114,9 @@ if __name__ == "__main__":
   #dispatch = dispatch[0:1000]
   X,Y,meta = extract(dispatch)
   print(X.shape, Y.shape)
-  X = X.numpy()
-  with open("data/big_X.raw", "wb") as f:
-    f.write(X.data)
-  torch.save([Y,meta], "data/big_Y.pt")
-  #torch.save([X,Y,meta], "data/cv.pt")
+  # X = X.numpy()
+  # with open("data/big_X.raw", "wb") as f:
+  #   f.write(X.data)
+  # torch.save([Y,meta], "data/big_Y.pt")
+  torch.save([X,Y,meta], "data/librispeech.pt")
 

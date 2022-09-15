@@ -18,10 +18,11 @@ import torch.multiprocessing as mp
 import torch.distributed as dist
 from torch.nn.parallel import DistributedDataParallel as DDP
 
+
 def load_data(dset):
   print("loading data")
   data = torch.load('data/'+dset+'.pt')
-  print("data loaded")
+  print(f"data loaded: {len(data)}")
   return data
 
 # TODO: is this the correct shape? possible we are masking batch?
@@ -57,18 +58,18 @@ WAN = os.getenv("WAN") != None
 def train(rank, world_size, data):
 
   # split dataset
-  ex_x, ex_y, meta = data
-  sz = ex_x.shape[0]
-  sz = sz//world_size
-  offset = rank*sz
+  ex_x, ex_y, meta = data # ex_x: [Tensor] ?
+  sz = ex_x.shape[0]      # total # of samples 
+  sz = sz//world_size     # number of samples per gpu
+  offset = rank*sz        # start index for this gpu
   ex_x = ex_x[offset:sz+offset]
   ex_y = ex_y[offset:sz+offset]
   meta = meta[offset:sz+offset]
   data = ex_x, ex_y, meta
 
   print(f"hello from process {rank}/{world_size} data {offset}-{offset+sz}")
-  torch.cuda.set_device(rank)
-  torch.cuda.empty_cache()
+  # torch.cuda.set_device(rank)
+  # torch.cuda.empty_cache()
 
   if WAN and rank == 0:
     import wandb
@@ -84,7 +85,7 @@ def train(rank, world_size, data):
 
   timestamp = int(time.time())
 
-  device = f"cuda:{rank}"
+  device = 'cpu'
   model = Rec().to(device)
   if world_size > 1:
     model = DDP(model, device_ids=[rank])
@@ -98,10 +99,11 @@ def train(rank, world_size, data):
   trains = [x for x in range(0, split)]
   vals = [x for x in range(split, sz)]
   val_batches = np.array(vals)[:len(vals)//batch_size * batch_size].reshape(-1, batch_size)
+  # batch size is 96, val dataset size is 159, so only 1 full batch, shaped (1, 96)
 
-  #optimizer = optim.Adam(model.parameters(), lr=learning_rate)
-  import apex
-  optimizer = apex.optimizers.FusedAdam(model.parameters(), lr=learning_rate)
+  optimizer = optim.Adam(model.parameters(), lr=learning_rate)
+  # import apex
+  # optimizer = apex.optimizers.FusedAdam(model.parameters(), lr=learning_rate)
 
   scheduler = optim.lr_scheduler.OneCycleLR(optimizer, max_lr=learning_rate, pct_start=0.2,
     steps_per_epoch=len(trains)//batch_size, epochs=epochs, anneal_strategy='linear', verbose=False)
@@ -112,9 +114,13 @@ def train(rank, world_size, data):
     if WAN and rank == 0:
       wandb.watch(model)
 
+    # validation
+    # transcribe test file for monitoring
+    # and pass all the validation batches through the network
     with torch.no_grad():
       model.eval()
 
+      # pass the sample data through the model
       mguess, _ = model(single_val[None], torch.tensor([single_val.shape[0]], dtype=torch.int32, device=device))
       pp = to_text(mguess[:, 0, :].argmax(dim=1).cpu())
       print("VALIDATION", pp)
@@ -127,12 +133,16 @@ def train(rank, world_size, data):
       for samples in (t:=tqdm(val_batches)):
         input, target, input_lengths, target_lengths = get_sample(samples, data, device, val=True)
         guess, input_lengths_mod = model(input, input_lengths)
+        # guess: (384, 96, 30)
+        # Max input_lengths_mod length: 1268
+        # It's because of the zz *= 4 in model.py L99
         loss = F.ctc_loss(guess, target, input_lengths_mod, target_lengths, zero_infinity=True)
         losses.append(loss)
       val_loss = torch.mean(torch.tensor(losses)).item()
       print(f"val_loss: {val_loss:.2f}")
 
       if (epoch%5 == 0 or epoch == epochs-1) and rank == 0:
+        # TODO make models/ folder if not exists
         fn = f"models/tinyvoice_{timestamp}_{epoch}_{val_loss:.2f}.pt"
         torch.save(model.state_dict(), fn)
         print(f"saved model {fn} with size {os.path.getsize(fn)}")
@@ -170,7 +180,7 @@ def train(rank, world_size, data):
       j += 1
 
 if __name__ == "__main__":
-  data = load_data('cv')
+  data = load_data('librispeech')
 
   #load_data('lj')
   """
@@ -183,4 +193,4 @@ if __name__ == "__main__":
            join=True)
   """
 
-  train(0, 1, data)
+  train(0, 1, data) # train on just 1 gpu
