@@ -118,9 +118,9 @@ if __name__ == "__main__":
   #ctc_loss = nn.CTCLoss().cuda()
   #model = Conformer(80, 4, 128, 4, 31).cuda()
   model = Rec().cuda()
-  #optimizer = optim.Adam(model.parameters(), lr=learning_rate)
-  import apex
-  optimizer = apex.optimizers.FusedAdam(model.parameters(), lr=learning_rate)
+  optimizer = optim.Adam(model.parameters(), lr=learning_rate)
+  # import apex
+  # optimizer = apex.optimizers.FusedAdam(model.parameters(), lr=learning_rate)
 
   input = torch.zeros(batch_size, 1600, 80, device='cuda:0', dtype=torch.float32)
   #target = torch.ones(batch_size*target_length, device='cuda:0', dtype=torch.int32)
