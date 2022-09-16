@@ -72,7 +72,7 @@ class Rec(nn.Module):
 
     self.decode = nn.Sequential(
       nn.Dropout(0.5),
-      nn.Linear(H, len(CHARSET)*self.expand)
+      nn.Linear(H, len(CHARSET)*self.expand + 1)
     )
 
   def forward(self, x, y):
@@ -95,7 +95,7 @@ class Rec(nn.Module):
     #x,zz = self.transformer(x), y
     #x,zz = self.gru(x)[0], y
     x,zz = self.conformer(x, y)
-    x = self.decode(x).reshape(x.shape[0], x.shape[1]*self.expand, len(CHARSET))
+    x = self.decode(x).reshape(x.shape[0], x.shape[1]*self.expand, len(CHARSET) + 1)
     # zz *= 4
     return torch.nn.functional.log_softmax(x, dim=2).permute(1,0,2), zz
 
