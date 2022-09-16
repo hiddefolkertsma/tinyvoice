@@ -53,7 +53,8 @@ def get_sample(samples, data, device, val=False):
     X = train_audio_transforms(X.permute(0,2,1)).permute(0,2,1)
   return X, Y, input_lengths, target_lengths
 
-WAN = os.getenv("WAN") != None
+# WAN = os.getenv("WAN") != None
+WAN = 1
 
 def train(rank, world_size, data):
 
@@ -73,19 +74,25 @@ def train(rank, world_size, data):
 
   if WAN and rank == 0:
     import wandb
-    wandb.init(project="tinyvoice", entity="geohot")
+    wandb.init(project="tinyvoice", entity="hiddefolkertsma")
 
   if world_size > 1:
     dist.init_process_group("nccl", rank=rank, world_size=world_size)
 
   epochs = 200
   learning_rate = 0.001
-  #batch_size = 256//world_size
-  batch_size = 96//world_size
+  batch_size = 96 // world_size
+
+  wandb.config = {
+    "epochs": epochs,
+    "learning_rate": learning_rate,
+    "batch_size": batch_size
+  }
+  
 
   timestamp = int(time.time())
 
-  device = 'cpu'
+  device = 'cuda:1'
   model = Rec().to(device)
   if world_size > 1:
     model = DDP(model, device_ids=[rank])
@@ -175,12 +182,12 @@ def train(rank, world_size, data):
         loss = run_model(sample)
 
       t.set_description(f"epoch: {epoch} loss: {loss.item():.2f} rank: {rank}")
-      if WAN and j%10 == 0 and rank == 0:
+      if WAN and rank == 0 and j % 10 == 0:
         wandb.log({"loss": loss})
       j += 1
 
 if __name__ == "__main__":
-  data = load_data('librispeech')
+  data = load_data('librispeech-train-clean')
 
   #load_data('lj')
   """
