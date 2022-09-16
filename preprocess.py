@@ -46,7 +46,7 @@ def proc(xy):
 
 def get_librespeech(dirr):
   dispatch = []
-  DATASET = "/Users/hidde/Downloads/LibriSpeech"
+  DATASET = "/home/hidde/data/LibriSpeech"
   for d in tqdm(os.listdir(os.path.join(DATASET, dirr,))):
     for dl in os.listdir(os.path.join(DATASET, dirr, d)):
       meta = os.path.join(DATASET, dirr, d, dl, f"{d}-{dl}.trans.txt")
@@ -95,9 +95,9 @@ def extract(dispatch):
 
 if __name__ == "__main__":
   dispatch = []
-  dispatch += get_librespeech("dev-clean")
+  dispatch += get_librespeech("train-clean-100")
   print(f"got {len(dispatch)}")
-  dispatch += get_librespeech("dev-other")
+  dispatch += get_librespeech("train-clean-360")
   print(f"got {len(dispatch)}")
   #dispatch += get_librespeech("test-clean")
   #print(f"got {len(dispatch)}")
@@ -118,5 +118,5 @@ if __name__ == "__main__":
   # with open("data/big_X.raw", "wb") as f:
   #   f.write(X.data)
   # torch.save([Y,meta], "data/big_Y.pt")
-  torch.save([X,Y,meta], "data/librispeech.pt")
+  torch.save([X,Y,meta], "data/librispeech-train-clean.pt")
 
